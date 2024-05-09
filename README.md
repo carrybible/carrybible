@@ -85,6 +85,7 @@ If you have the necessary technical skills and want to continue using or improvi
 1.  **Clone the Repository:** Start by cloning this repository to your local development environment.
 
 2.  Our app have 3 main part are [Mobile](carry-app/README.md) (React-native), [Dashboard](carry-dashboard/README.md) (ReactJS + NextJs) and [Backend](carry-functions/README.md) (firebase-functions).
+
     :warning: **Warning:**  
     All keys and configuration settings within the source code have been removed for security reasons. This includes API keys, authentication details, and other sensitive information.
     **Action Required:** To ensure the continued functionality of the app, it is crucial that you take the following steps:
@@ -99,7 +100,7 @@ If you have the necessary technical skills and want to continue using or improvi
 
 ## Support
 
-As mentioned earlier, we no longer provide official support for the Carry App. For any issues or questions related to this repository, please refer to the [GitHub Issues](TODO: link later) section.
+As mentioned earlier, we no longer provide official support for the Carry App. For any issues or questions related to this repository, please refer to the [GitHub Issues](https://github.com/carrybible/carrybible/issues) section.
 
 If any questions in regard to ministry partnerships or opportunities, you can contact via [Email](mailto:matt@carrybible.com)
 
@@ -114,4 +115,5 @@ We want to express our sincere appreciation to the Carry community for their sup
 We hope that this open-source initiative will allow Carry to continue serving its dedicated user base. Thank you for being a part of the Carry community.
 
 The Carry Bible Team
+
 May 2024
