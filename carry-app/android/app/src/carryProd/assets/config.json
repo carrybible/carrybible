@@ -1,0 +1,49 @@
+{
+  "application": {
+    "name": "Carry",
+    "variant": "carry",
+    "env": "prod",
+    "bundleId": {
+      "ios": "",
+      "android": ""
+    },
+    "contactUrl": ""
+  },
+  "segment": {
+    "key": ""
+  },
+  "streamIO": {
+    "key": "",
+    "server": ""
+  },
+  "codepush": {
+    "android": "",
+    "ios": ""
+  },
+  "branchIO": {
+    "domains": ["", ""],
+    "uriScheme": "",
+    "testMode": false,
+    "key": {
+      "live": "",
+      "test": ""
+    }
+  },
+  "facebook": {
+    "displayName": "",
+    "appId": "",
+    "client_token": {
+      "android": "",
+      "ios": ""
+    },
+    "loginProtocolScheme": ""
+  },
+  "bibleApi": {
+    "server": "",
+    "fumsServer": "",
+    "key": ""
+  },
+  "stripe": {
+    "merchant": ""
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "carry-dev",
+    "dev": "carry-dev",
+    "prod": "carry-live"
+  }
+}

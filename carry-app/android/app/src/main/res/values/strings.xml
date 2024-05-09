@@ -1,0 +1,7 @@
+<resources>
+    <string name="facebook_app_id">2795970910725796</string>
+    <string name="facebook_client_token">892016d2dd00117855f1a439f12ea220</string>
+    <string name="fb_login_protocol_scheme">fb2795970910725796</string>
+    <string name="maps_api_key">AIzaSyCVJwZyqnb44Iei7IWxTv9z-K93P81bxXU</string>
+<!--    <string moduleConfig="true" name="CodePushDeploymentKey">IrwrOYAXTn1erdxhj7WdMpB9StK4hc-GIN7uD</string>-->
+</resources>

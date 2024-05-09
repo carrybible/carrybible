@@ -1,0 +1,18 @@
+{
+  "plugins": ["prettier", "@typescript-eslint"],
+  "extends": ["next/core-web-vitals", "prettier"],
+  "rules": {
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": ["error"],
+    "no-console": 1,
+    "prettier/prettier": 2,
+    "max-lines": [
+      "error",
+      {
+        "max": 500,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ]
+  }
+}

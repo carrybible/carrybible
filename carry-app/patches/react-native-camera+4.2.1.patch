@@ -1,0 +1,198 @@
+diff --git a/node_modules/react-native-camera/ios/.DS_Store b/node_modules/react-native-camera/ios/.DS_Store
+new file mode 100644
+index 0000000..74e3bfb
+Binary files /dev/null and b/node_modules/react-native-camera/ios/.DS_Store differ
+diff --git a/node_modules/react-native-camera/ios/RN/BarcodeDetectorManagerMlkit.m b/node_modules/react-native-camera/ios/RN/BarcodeDetectorManagerMlkit.m
+index 33c369f..3f4b3f1 100644
+--- a/node_modules/react-native-camera/ios/RN/BarcodeDetectorManagerMlkit.m
++++ b/node_modules/react-native-camera/ios/RN/BarcodeDetectorManagerMlkit.m
+@@ -1,6 +1,6 @@
+ #import "BarcodeDetectorManagerMlkit.h"
+ #import <React/RCTConvert.h>
+-#import "RNFileSystem.h"
++#import "RNFileSystemNew.h"
+ #if __has_include(<MLKitBarcodeScanning/MLKitBarcodeScanning.h>)
+ @import MLKitVision;
+ 
+@@ -113,7 +113,7 @@ - (NSArray *)processBarcodes:(NSArray *)barcodes imageContainingBarcodes:(UIImag
+         [resultDict setObject:displayValue forKey:@"data"];
+ 
+         // Store the image to app cache and return the uri
+-        NSString *path = [RNFileSystem generatePathInDirectory:[[RNFileSystem cacheDirectoryPath] stringByAppendingPathComponent:@"Camera"] withExtension:@".jpg"];
++        NSString *path = [RNFileSystemNew generatePathInDirectory:[[RNFileSystemNew cacheDirectoryPath] stringByAppendingPathComponent:@"Camera"] withExtension:@".jpg"];
+         [UIImageJPEGRepresentation(imageContainingBarcodes, 1.0) writeToFile:path atomically:YES];
+         [resultDict setObject:path forKey:@"uri"];
+ 
+diff --git a/node_modules/react-native-camera/ios/RN/RNCamera.m b/node_modules/react-native-camera/ios/RN/RNCamera.m
+index cb414c0..244f669 100644
+--- a/node_modules/react-native-camera/ios/RN/RNCamera.m
++++ b/node_modules/react-native-camera/ios/RN/RNCamera.m
+@@ -1,7 +1,7 @@
+ #import "RNCamera.h"
+ #import "RNCameraUtils.h"
+ #import "RNImageUtils.h"
+-#import "RNFileSystem.h"
++#import "RNFileSystemNew.h"
+ #import <React/RCTEventDispatcher.h>
+ #import <React/RCTLog.h>
+ #import <React/RCTUtils.h>
+@@ -957,7 +957,7 @@ - (void)takePicture:(NSDictionary *)options resolve:(RCTPromiseResolveBlock)reso
+                         path = options[@"path"];
+                     }
+                     else{
+-                        path = [RNFileSystem generatePathInDirectory:[[RNFileSystem cacheDirectoryPath] stringByAppendingPathComponent:@"Camera"] withExtension:imageExtension];
++                        path = [RNFileSystemNew generatePathInDirectory:[[RNFileSystemNew cacheDirectoryPath] stringByAppendingPathComponent:@"Camera"] withExtension:imageExtension];
+                     }
+ 
+                     bool success = YES;
+@@ -1230,7 +1230,7 @@ - (void)record:(NSDictionary *)options resolve:(RCTPromiseResolveBlock)resolve r
+             path = options[@"path"];
+         }
+         else {
+-            path = [RNFileSystem generatePathInDirectory:[[RNFileSystem cacheDirectoryPath] stringByAppendingPathComponent:@"Camera"] withExtension:@".mov"];
++            path = [RNFileSystemNew generatePathInDirectory:[[RNFileSystemNew cacheDirectoryPath] stringByAppendingPathComponent:@"Camera"] withExtension:@".mov"];
+         }
+ 
+         if ([options[@"mirrorVideo"] boolValue]) {
+@@ -2033,7 +2033,7 @@ - (void)mirrorVideo:(NSURL *)inputURL completion:(void (^)(NSURL* outputUR))comp
+ 
+     // Export
+     AVAssetExportSession* exportSession = [AVAssetExportSession exportSessionWithAsset:videoAsset presetName:preset];
+-    NSString* filePath = [RNFileSystem generatePathInDirectory:[[RNFileSystem cacheDirectoryPath] stringByAppendingString:@"CameraFlip"] withExtension:@".mp4"];
++    NSString* filePath = [RNFileSystemNew generatePathInDirectory:[[RNFileSystemNew cacheDirectoryPath] stringByAppendingString:@"CameraFlip"] withExtension:@".mp4"];
+     NSURL* outputURL = [NSURL fileURLWithPath:filePath];
+     [exportSession setOutputURL:outputURL];
+     [exportSession setOutputFileType:AVFileTypeMPEG4];
+diff --git a/node_modules/react-native-camera/ios/RN/RNCameraManager.m b/node_modules/react-native-camera/ios/RN/RNCameraManager.m
+index 8484b5d..5478116 100644
+--- a/node_modules/react-native-camera/ios/RN/RNCameraManager.m
++++ b/node_modules/react-native-camera/ios/RN/RNCameraManager.m
+@@ -1,6 +1,6 @@
+ #import "RNCamera.h"
+ #import "RNCameraManager.h"
+-#import "RNFileSystem.h"
++#import "RNFileSystemNew.h"
+ #import "RNImageUtils.h"
+ #import <React/RCTBridge.h>
+ #import <React/RCTUIManager.h>
+@@ -380,7 +380,7 @@ + (NSDictionary *)barcodeDetectorConstants
+                 path = options[@"path"];
+             }
+             else{
+-                path = [RNFileSystem generatePathInDirectory:[[RNFileSystem cacheDirectoryPath] stringByAppendingPathComponent:@"Camera"] withExtension:@".jpg"];
++                path = [RNFileSystemNew generatePathInDirectory:[[RNFileSystemNew cacheDirectoryPath] stringByAppendingPathComponent:@"Camera"] withExtension:@".jpg"];
+             }
+             UIImage *generatedPhoto = [RNImageUtils generatePhotoOfSize:CGSizeMake(200, 200)];
+             BOOL useFastMode = options[@"fastMode"] && [options[@"fastMode"] boolValue];
+diff --git a/node_modules/react-native-camera/ios/RN/RNFaceDetectorModuleMLKit.m b/node_modules/react-native-camera/ios/RN/RNFaceDetectorModuleMLKit.m
+index c8a1c29..3c98ebf 100644
+--- a/node_modules/react-native-camera/ios/RN/RNFaceDetectorModuleMLKit.m
++++ b/node_modules/react-native-camera/ios/RN/RNFaceDetectorModuleMLKit.m
+@@ -1,6 +1,6 @@
+ #import "RNFaceDetectorModuleMLKit.h"
+ #if __has_include(<MLKitFaceDetection/MLKitFaceDetection.h>)
+-#import "RNFileSystem.h"
++#import "RNFileSystemNew.h"
+ #import "RNImageUtils.h"
+ 
+ static const NSString *kModeOptionName = @"mode";
+diff --git a/node_modules/react-native-camera/ios/RN/RNFileSystem.h b/node_modules/react-native-camera/ios/RN/RNFileSystemNew.h
+similarity index 83%
+rename from node_modules/react-native-camera/ios/RN/RNFileSystem.h
+rename to node_modules/react-native-camera/ios/RN/RNFileSystemNew.h
+index 1b277d9..4018362 100644
+--- a/node_modules/react-native-camera/ios/RN/RNFileSystem.h
++++ b/node_modules/react-native-camera/ios/RN/RNFileSystemNew.h
+@@ -1,5 +1,5 @@
+ //
+-//  RNFileSystem.h
++//  RNFileSystemNew.h
+ //  RCTCamera
+ //
+ //  Created by Joao Guilherme Daros Fidelis on 19/01/18.
+@@ -7,7 +7,7 @@
+ 
+ #import <Foundation/Foundation.h>
+ 
+-@interface RNFileSystem : NSObject
++@interface RNFileSystemNew : NSObject
+ 
+ + (BOOL)ensureDirExistsWithPath:(NSString *)path;
+ + (NSString *)generatePathInDirectory:(NSString *)directory withExtension:(NSString *)extension;
+diff --git a/node_modules/react-native-camera/ios/RN/RNFileSystem.m b/node_modules/react-native-camera/ios/RN/RNFileSystemNew.m
+similarity index 87%
+rename from node_modules/react-native-camera/ios/RN/RNFileSystem.m
+rename to node_modules/react-native-camera/ios/RN/RNFileSystemNew.m
+index 106f221..1389a8f 100644
+--- a/node_modules/react-native-camera/ios/RN/RNFileSystem.m
++++ b/node_modules/react-native-camera/ios/RN/RNFileSystemNew.m
+@@ -1,13 +1,13 @@
+ //
+-//  RNFileSystem.m
++//  RNFileSystemNew.m
+ //  RCTCamera
+ //
+ //  Created by Joao Guilherme Daros Fidelis on 19/01/18.
+ //
+ 
+-#import "RNFileSystem.h"
++#import "RNFileSystemNew.h"
+ 
+-@implementation RNFileSystem
++@implementation RNFileSystemNew
+ 
+ + (BOOL)ensureDirExistsWithPath:(NSString *)path
+ {
+@@ -26,7 +26,7 @@ + (BOOL)ensureDirExistsWithPath:(NSString *)path
+ + (NSString *)generatePathInDirectory:(NSString *)directory withExtension:(NSString *)extension
+ {
+     NSString *fileName = [[[NSUUID UUID] UUIDString] stringByAppendingString:extension];
+-    [RNFileSystem ensureDirExistsWithPath:directory];
++    [RNFileSystemNew ensureDirExistsWithPath:directory];
+     return [directory stringByAppendingPathComponent:fileName];
+ }
+ 
+diff --git a/node_modules/react-native-camera/ios/RNCamera.xcodeproj/project.pbxproj b/node_modules/react-native-camera/ios/RNCamera.xcodeproj/project.pbxproj
+index 0430c63..42a4429 100644
+--- a/node_modules/react-native-camera/ios/RNCamera.xcodeproj/project.pbxproj
++++ b/node_modules/react-native-camera/ios/RNCamera.xcodeproj/project.pbxproj
+@@ -18,7 +18,7 @@
+ 		7162BE682013EAA400FE51FF /* RNCameraManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 71C7FFC92013C7AE006EB75A /* RNCameraManager.m */; };
+ 		71C7FFD02013C7E5006EB75A /* RNCameraUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 71C7FFCF2013C7E5006EB75A /* RNCameraUtils.m */; };
+ 		71C7FFD32013C817006EB75A /* RNImageUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 71C7FFD22013C817006EB75A /* RNImageUtils.m */; };
+-		71C7FFD62013C824006EB75A /* RNFileSystem.m in Sources */ = {isa = PBXBuildFile; fileRef = 71C7FFD52013C824006EB75A /* RNFileSystem.m */; };
++		71C7FFD62013C824006EB75A /* RNFileSystemNew.m in Sources */ = {isa = PBXBuildFile; fileRef = 71C7FFD52013C824006EB75A /* RNFileSystemNew.m */; };
+ 		9FE592B31CA3CBF500788287 /* RCTSensorOrientationChecker.m in Sources */ = {isa = PBXBuildFile; fileRef = 9FE592B21CA3CBF500788287 /* RCTSensorOrientationChecker.m */; };
+ 		A7D02BC9243627E100C0EDE6 /* RNCustomWhiteBalanceSettings.m in Sources */ = {isa = PBXBuildFile; fileRef = A7D02BC8243627E100C0EDE6 /* RNCustomWhiteBalanceSettings.m */; };
+ 		F8393BEC21469C0000AB1995 /* RNSensorOrientationChecker.m in Sources */ = {isa = PBXBuildFile; fileRef = F8393BEB21469C0000AB1995 /* RNSensorOrientationChecker.m */; };
+@@ -59,8 +59,8 @@
+ 		71C7FFCF2013C7E5006EB75A /* RNCameraUtils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNCameraUtils.m; sourceTree = "<group>"; };
+ 		71C7FFD12013C817006EB75A /* RNImageUtils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RNImageUtils.h; sourceTree = "<group>"; };
+ 		71C7FFD22013C817006EB75A /* RNImageUtils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNImageUtils.m; sourceTree = "<group>"; };
+-		71C7FFD42013C824006EB75A /* RNFileSystem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RNFileSystem.h; sourceTree = "<group>"; };
+-		71C7FFD52013C824006EB75A /* RNFileSystem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNFileSystem.m; sourceTree = "<group>"; };
++		71C7FFD42013C824006EB75A /* RNFileSystemNew.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RNFileSystemNew.h; sourceTree = "<group>"; };
++		71C7FFD52013C824006EB75A /* RNFileSystemNew.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNFileSystemNew.m; sourceTree = "<group>"; };
+ 		9FE592B11CA3CBF500788287 /* RCTSensorOrientationChecker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RCTSensorOrientationChecker.h; sourceTree = "<group>"; };
+ 		9FE592B21CA3CBF500788287 /* RCTSensorOrientationChecker.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RCTSensorOrientationChecker.m; sourceTree = "<group>"; };
+ 		A7D02BC7243627E100C0EDE6 /* RNCustomWhiteBalanceSettings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RNCustomWhiteBalanceSettings.h; sourceTree = "<group>"; };
+@@ -124,8 +124,8 @@
+ 				F8393BEB21469C0000AB1995 /* RNSensorOrientationChecker.m */,
+ 				2647D66F2256BBD5007D2F91 /* FaceDetectorManagerMlkit.h */,
+ 				2647D6702256BBD5007D2F91 /* FaceDetectorManagerMlkit.m */,
+-				71C7FFD42013C824006EB75A /* RNFileSystem.h */,
+-				71C7FFD52013C824006EB75A /* RNFileSystem.m */,
++				71C7FFD42013C824006EB75A /* RNFileSystemNew.h */,
++				71C7FFD52013C824006EB75A /* RNFileSystemNew.m */,
+ 				2647D6732256BBE8007D2F91 /* RNFaceDetectorModuleMLKit.h */,
+ 				2647D6722256BBE8007D2F91 /* RNFaceDetectorModuleMLKit.m */,
+ 				71C7FFD12013C817006EB75A /* RNImageUtils.h */,
+@@ -201,7 +201,7 @@
+ 				2647D6742256BBE8007D2F91 /* RNFaceDetectorModuleMLKit.m in Sources */,
+ 				0314E39D1B661A460092D183 /* CameraFocusSquare.m in Sources */,
+ 				454EBCF41B5082DC00AD0F86 /* NSMutableDictionary+ImageMetadata.m in Sources */,
+-				71C7FFD62013C824006EB75A /* RNFileSystem.m in Sources */,
++				71C7FFD62013C824006EB75A /* RNFileSystemNew.m in Sources */,
+ 				A7D02BC9243627E100C0EDE6 /* RNCustomWhiteBalanceSettings.m in Sources */,
+ 				4107014E1ACB732B00C6AA39 /* RCTCameraManager.m in Sources */,
+ 				4107014D1ACB732B00C6AA39 /* RCTCamera.m in Sources */,

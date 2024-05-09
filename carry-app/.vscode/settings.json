@@ -1,0 +1,42 @@
+{
+  "editor.tabSize": 2,
+  "editor.wordBasedSuggestions": false,
+  // "editor.codeActionsOnSave": {
+  //   "source.organizeImports": true
+  // },
+  "editor.acceptSuggestionOnEnter": "smart",
+  "editor.tabCompletion": "on",
+  // Enable per-language
+  "[javascript]": {
+    "editor.showUnused": true
+  },
+  "typescript.validate.enable": true,
+  "javascript.validate.enable": true,
+  "javascript.suggest.names": false,
+  "javascript.showUnused.enabled": true,
+  "prettier.printWidth": 80,
+  "prettier.semi": false,
+  "prettier.singleQuote": true,
+  "prettier.trailingComma": "all",
+  "colorize.languages": ["css", "sass", "scss", "less", "postcss", "sss", "stylus", "xml", "svg", "javascript", "typescript"],
+  "i18n-ally.localesPaths": [
+    "src/assets/i18n",
+    "ios/Pods/Flipper-Folly/folly/lang",
+    "ios/Pods/Folly/folly/lang",
+    "ios/Pods/boost-for-react-native/boost/locale",
+    "ios/Pods/boost-for-react-native/boost/predef/language",
+    "ios/Pods/Headers/Private/Flipper-Folly/folly/lang",
+    "ios/Pods/Headers/Public/Flipper-Folly/folly/lang"
+  ],
+  "i18n-ally.keystyle": "nested",
+  "i18n-ally.enabledParsers": ["ts", "json"],
+  "i18n-ally.sourceLanguage": "en",
+  "i18n-ally.ignoredLocales": ["index"],
+  "i18n-ally.fullReloadOnChanged": true,
+  "i18n-ally.sortKeys": true,
+  "deepscan.enable": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}

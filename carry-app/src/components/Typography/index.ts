@@ -1,0 +1,7 @@
+export { default as H1 } from './H1'
+export { default as H2 } from './H2'
+export { default as H3 } from './H3'
+export { default as Subheading } from './Subheading'
+export { default as Text } from './Text'
+export { default as Footnote } from './Footnote'
+export { default as Title } from './Title'

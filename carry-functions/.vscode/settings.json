@@ -1,0 +1,32 @@
+{
+  "editor.tabSize": 2,
+  // Set the default
+  "editor.formatOnSave": true,
+  "editor.showUnused": true,
+  "editor.wordBasedSuggestions": false,
+  // "editor.codeActionsOnSave": {
+  //   "source.organizeImports": true
+  // },
+  "editor.acceptSuggestionOnEnter": "smart",
+  "editor.tabCompletion": "on",
+
+  "typescript.validate.enable": true,
+  "javascript.validate.enable": true,
+  "javascript.suggest.names": false,
+  "javascript.format.semicolons": "ignore",
+  "javascript.showUnused.enabled": true,
+  "prettier.arrowParens": "avoid",
+  "prettier.printWidth": 120,
+  "prettier.semi": false,
+  "prettier.singleQuote": true,
+  "prettier.trailingComma": "all",
+  "colorize.languages": ["javascript", "typescript", "typescriptreact"],
+  "i18n-ally.keystyle": "nested",
+  "i18n-ally.enabledParsers": ["ts", "json"],
+  "i18n-ally.sourceLanguage": "en",
+  "i18n-ally.ignoredLocales": ["index"],
+  "i18n-ally.fullReloadOnChanged": true,
+  "i18n-ally.sortKeys": true,
+  "i18n-ally.localesPaths": ["functions/src/shared/i18n"],
+  "deepscan.enable": true
+}

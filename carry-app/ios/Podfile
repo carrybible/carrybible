@@ -1,0 +1,75 @@
+# Override Firebase SDK Version
+$FirebaseSDKVersion = '8.5.0'
+require File.join(File.dirname(`node --print "require.resolve('react-native/package.json')"`), "scripts/react_native_pods")
+require File.join(File.dirname(`node --print "require.resolve('@react-native-community/cli-platform-ios/package.json')"`), "native_modules")
+
+platform :ios, '13.0'
+install! 'cocoapods', :deterministic_uuids => false, :disable_input_output_paths => true
+
+
+def shared_pods
+  config = use_native_modules!
+
+  # Flags change depending on the env values.
+  flags = get_default_flags()
+  
+  use_react_native!(
+                    :path => config[:reactNativePath],
+                    # Hermes is now enabled by default. Disable by setting this flag to false.
+                    # Upcoming versions of React Native may rely on get_default_flags(), but
+                    # we make it explicit here to aid in the React Native upgrade process.
+                    :hermes_enabled => true,
+                    :fabric_enabled => flags[:fabric_enabled],
+                    # :flipper_configuration => FlipperConfiguration.enabled,
+                    # An absolute path to your application root.
+                    :app_path => "#{Pod::Config.instance.installation_root}/.."
+                    )
+                    
+                    # Uncomment to opt-in to using Flipper
+                    #
+                    # if !ENV['CI']
+                    #   use_flipper!('Flipper' => '0.75.1', 'Flipper-Folly' => '2.5.3', 'Flipper-RSocket' => '1.3.1')
+                    # end
+                    
+                    # React Native Maps dependencies
+                    rn_maps_path = '../node_modules/react-native-maps'
+                    pod 'react-native-google-maps', :path => rn_maps_path
+                    pod 'GoogleMaps'
+                    pod 'Google-Maps-iOS-Utils'
+                    # pod 'OpenSSL-Universal', '~>1.0.2.20'
+                    pod 'react-native-fbsdk-next', :path => '../node_modules/react-native-fbsdk-next'
+                    pod 'react-native-camera', path: '../node_modules/react-native-camera', subspecs: [
+                    'BarcodeDetectorMLKit'
+                    ]
+                    pod 'PromisesObjC', :modular_headers => true
+end
+
+target 'carry.dev' do
+  shared_pods
+end
+
+target 'carry.prod' do
+  shared_pods
+end
+
+post_install do |installer|
+  react_native_post_install(installer)
+  react_native_post_install(
+    installer,
+    # Set `mac_catalyst_enabled` to `true` in order to apply patches
+    # necessary for Mac Catalyst builds
+    :mac_catalyst_enabled => false
+  )
+  
+  __apply_Xcode_12_5_M1_post_install_workaround(installer)
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      if Gem::Version.new('9.0') > Gem::Version.new(config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'])
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '9.0'
+      end
+      if config.build_settings['WRAPPER_EXTENSION'] == 'bundle'
+        config.build_settings['DEVELOPMENT_TEAM'] = 'FYAYFLDRK4'
+      end
+    end
+  end
+end

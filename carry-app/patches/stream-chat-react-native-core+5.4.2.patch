@@ -1,0 +1,68 @@
+diff --git a/node_modules/stream-chat-react-native-core/src/components/AttachmentPicker/AttachmentPicker.tsx b/node_modules/stream-chat-react-native-core/src/components/AttachmentPicker/AttachmentPicker.tsx
+index b75bd68..9b2bd2e 100644
+--- a/node_modules/stream-chat-react-native-core/src/components/AttachmentPicker/AttachmentPicker.tsx
++++ b/node_modules/stream-chat-react-native-core/src/components/AttachmentPicker/AttachmentPicker.tsx
+@@ -27,6 +27,9 @@ const screenHeight = vh(100);
+ const fullScreenHeight = Dimensions.get('window').height;
+ 
+ export type AttachmentPickerProps = {
++  // https://github.com/carrybible/carry-issues/issues/347
++  // Custom UI for Carry App
++  AttachmentPickerSelectButton?: React.FC<{ totalPhotoSelected: number, closePicker: () => void }>;
+   /**
+    * Custom UI component to render [draggable handle](https://github.com/GetStream/stream-chat-react-native/blob/main/screenshots/docs/1.png) of attachment picker.
+    *
+@@ -63,6 +66,7 @@ export type AttachmentPickerProps = {
+ export const AttachmentPicker = React.forwardRef(
+   (props: AttachmentPickerProps, ref: React.ForwardedRef<BottomSheet>) => {
+     const {
++      AttachmentPickerSelectButton,
+       AttachmentPickerBottomSheetHandle,
+       attachmentPickerBottomSheetHandleHeight,
+       attachmentPickerBottomSheetHeight,
+@@ -291,6 +295,13 @@ export const AttachmentPicker = React.forwardRef(
+             renderItem={renderAttachmentPickerItem}
+           />
+         </BottomSheet>
++        {AttachmentPickerSelectButton && currentIndex > -1 && (
++         <AttachmentPickerSelectButton
++           closePicker={() => closePicker()}
++          totalPhotoSelected={selectedPhotos.filter(photo => photo.selected).length}
++        />
++        )}
++
+         {selectedPicker === 'images' && photoError && (
+           <AttachmentPickerError
+             attachmentPickerBottomSheetHeight={initialSnapPoint}
+diff --git a/node_modules/stream-chat-react-native-core/src/components/MessageList/MessageList.tsx b/node_modules/stream-chat-react-native-core/src/components/MessageList/MessageList.tsx
+index 0272c01..96473f5 100644
+--- a/node_modules/stream-chat-react-native-core/src/components/MessageList/MessageList.tsx
++++ b/node_modules/stream-chat-react-native-core/src/components/MessageList/MessageList.tsx
+@@ -375,6 +375,7 @@ const MessageListWithContext = <
+       if (
+         lastItem?.item?.created_at &&
+         !isMessageTypeDeleted &&
++        lastItem.item.hide_message !== true &&
+         typeof lastItem.item.created_at !== 'string' &&
+         lastItem.item.created_at.toDateString() !== stickyHeaderDateRef.current?.toDateString()
+       ) {
+diff --git a/node_modules/stream-chat-react-native-core/src/contexts/overlayContext/OverlayProvider.tsx b/node_modules/stream-chat-react-native-core/src/contexts/overlayContext/OverlayProvider.tsx
+index f99f8c7..402ea5f 100644
+--- a/node_modules/stream-chat-react-native-core/src/contexts/overlayContext/OverlayProvider.tsx
++++ b/node_modules/stream-chat-react-native-core/src/contexts/overlayContext/OverlayProvider.tsx
+@@ -66,6 +66,7 @@ export const OverlayProvider = <
+ ) => {
+   const bottomSheetCloseTimeoutRef = useRef<NodeJS.Timeout>();
+   const {
++    AttachmentPickerSelectButton,
+     AttachmentPickerBottomSheetHandle = DefaultAttachmentPickerBottomSheetHandle,
+     attachmentPickerBottomSheetHandleHeight,
+     attachmentPickerBottomSheetHeight,
+@@ -126,6 +127,7 @@ export const OverlayProvider = <
+   } = props;
+ 
+   const attachmentPickerProps = {
++    AttachmentPickerSelectButton,
+     AttachmentPickerBottomSheetHandle,
+     attachmentPickerBottomSheetHandleHeight,
+     attachmentPickerBottomSheetHeight,

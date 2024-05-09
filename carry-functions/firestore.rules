@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // True if signed in and owner of path
+    function signedInPathOwner(userID) {
+      return request.auth.uid != null && request.auth.uid == userID;
+    }
+
+    match /groups/{groupID}/{document=**} {
+      allow read: if true;
+      allow create: if request.auth.uid != null;
+      allow write: if true;
+
+      match /threads/{threadId} {
+        allow read, update: if true;
+        allow create, delete: if request.auth.token.admin == true;
+      }
+
+      match /goals/{goalId} {
+        allow read, update, create, delete: if true;
+      }
+
+    }
+
+    match /{path=**}/unreadThreads/{userID} {
+      allow read, update, create, delete: if true;
+    }
+
+    match /codes/{document=**} {
+      allow read: if true;
+    }
+    
+    match /checkouts/{document=**} {
+      allow read: if true;
+    }
+
+    match /translations/{document=**} {
+      allow read: if true;
+    }
+
+    match /organisations/{document=**} {
+      allow read: if true;
+
+      match /orgPlans/{planId} {
+        allow read, update, create, delete: if true;
+
+        match /publishedGroups/{publishId} {
+          allow read, update, create, delete: if true;
+        }
+      }
+      match /sharedPlans/{planId} {
+        allow read, update, create, delete: if true;
+      }
+      match /donates/{donateId} {
+        allow read, update, create, delete: if true;
+      }
+    }
+
+    match /settings/{document=**} {
+      allow read: if true;
+    }
+
+    match /users/{userID}/{document=**} {
+      allow create: if signedInPathOwner(userID);
+      allow read: if true;
+      allow update: if signedInPathOwner(userID);
+      allow delete: if signedInPathOwner(userID);
+
+      match /notes/{noteId} {
+        allow read, update, create, delete: if true;
+      }
+    }
+
+    match /invites/{document=**} {
+      allow read: if true;
+      allow create: if request.auth.uid != null;
+      allow update: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

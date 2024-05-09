@@ -1,0 +1,691 @@
+/* eslint-disable */
+
+function getDefaults() {
+  return {
+    b: '$b',
+    c: '$c',
+    v: '$v',
+    '-': '-',
+    ',': ', ',
+    '.': ' ',
+    'c.v': ':',
+    $chapters: ['ch', 'chs'],
+    $verses: ['v', 'vv'],
+
+    singleChapterFormat: 'bv', // Or `b` or `bcv`.
+    singleChapterBooks: ['Obad', 'Phlm', '2John', '3John', 'Jude', 'PrAzar', 'SgThree', 'Sus', 'Bel', 'EpJer', 'PrMan', 'Ps151', 'AddPs'],
+
+    Ps151Format: 'bc', // Or `b`.
+    maxPs: 150,
+  }
+}
+
+function OsisFormatter() {
+  // Some subset of "b.c.v-b.c.v".
+  const osisFormat = /^[1-5A-Za-z]{2,}(?:\.\d{1,3}(?:\.\d{1,3})?)?(?:-[1-5A-Za-z]{2,}(?:\.\d{1,3}(?:\.\d{1,3})?)?)?$/
+
+  let books = {}
+  let options = getDefaults()
+
+  // Convert an OSIS string, and an optional OSIS context, to human-readable form. Aim for the shortest understandable string: `Matt.1-Matt.2` might become `Matthew 1-2`.
+  function format(osisString, osisContext) {
+    const tokens = createTokens(osisString, osisContext)
+    const out = []
+    for (let i = 0, max = tokens.length; i < max; i++) {
+      out.push(formatToken(tokens[i]))
+    }
+    return out.join('')
+  }
+
+  // Convert an OSIS string, and an optional OSIS context, to a series of tokens for further processing. The number of tokens matches the number of comma-separated OSIS references in the first argument except when those references produce no output (e.g., `1John,2John` may produce a formatted `1 and 2 John`). In that case, the extra token(s) are in `.subTokens`.
+  function tokenize(osisString, osisContext) {
+    const tokens = createTokens(osisString, osisContext)
+    const out = []
+    for (let i = 0, max = tokens.length; i < max; i++) {
+      const token = tokens[i]
+      token.format = formatToken(token)
+      out.push(token)
+    }
+    return {
+      tokens: out,
+    }
+  }
+
+  // Convert the OSIS string and optional context to an array of tokens.
+  function createTokens(osisString, osisContext) {
+    if (typeof osisString !== 'string') {
+      throw 'OsisFormatter: first argument (OSIS) must be a string.'
+    }
+    // Create a context object, using the supplied context (if available).
+    const context = setContext(osisContext)
+    // Separate the supplied OSISes into individual OSIS references.
+    const osises = osisString.split(',')
+    const tokens = []
+    while (osises.length > 0) {
+      // Make sure we're dealing with a valid OSIS string. It throws an exception if there's a problem.
+      let osis
+      try {
+        osis = normalizeOsis(osises.shift())
+        // Tokenize the OSIS string.
+        tokens.push(osisToToken(osis, context))
+        // Add a separator token if there are more OSIS strings to tokenize. We don't want to add it at the end of the loop.
+        if (osises.length > 0) {
+          tokens.push({
+            osis: ',',
+            type: ',',
+            parts: [],
+            laters: [],
+          })
+        }
+      } catch (e) {
+        devWarn(`can not get osis, |osisString: ${osisString}|`, osises)
+      }
+    }
+    // Calculate data that we may need about future tokens in the sequence.
+    return annotateTokens(tokens)
+  }
+
+  // Format a single token.
+  function formatToken(token) {
+    // First check to see if we have a book range or sequence to handle specially (`1John-2John` might become `1-2 John`, or `1John,2John` might become `1 and 2 John`).
+    const bookProperties = ['bookRange', 'bookSequence']
+    for (let i = 0; i <= 1; i++) {
+      // This somewhat convoluted syntax is to satisfy Flow.
+      const property = bookProperties[i]
+      if (typeof token[property] !== 'string') {
+        continue
+      }
+      const book = books[token[property]]
+      if (book !== undefined && typeof book[0] === 'string') {
+        return book[0]
+      }
+    }
+
+    // Most of the time, iterate over its `parts` to build the output string.
+    const out = []
+    for (let i = 0, max = token.parts.length; i < max; i++) {
+      out.push(formatPart(token, token.parts[i]))
+    }
+    return out.join('')
+  }
+
+  // Format a `part` in a `token.parts`.
+  function formatPart(token, part) {
+    let prefix = ''
+    switch (part.type) {
+      case 'c':
+      case 'v':
+        // If we specify a specific format for this `subType`, then calculate the value to prepend to the final output. For example, `^v` when a verse appears first in a string (when `format()` has a `context`) might want a `vv. ` prefix.
+        if (part.subType !== '' && typeof options[part.subType] !== 'undefined') {
+          prefix = formatVariable(part.subType, part, token)
+        }
+      // Fall through to `b`, which uses the same logic.
+      case 'b':
+        return prefix + formatVariable(part.type, part, token)
+      // Punctuation tokens all use the same logic. They never have prefixes because they can never appear first in a string.
+      case '.':
+      case '-':
+      case ',':
+      // Falls through. `default` is only here to satisfy code coverage. There are no other cases.
+      default:
+        return formatVariable(getBestOption(part.type, part.subType, token.position), part, token)
+    }
+  }
+
+  // `options` can contain partial matches: `bc-bc`, `bc-b`, `c-bc`, `c-b`, `-bc`, `-b`, and `-` all match a `bc-bc` string, for example. Take the best match that exists in `options`.
+  function getBestOption(splitChar, option, position) {
+    let [pre, post] = option.split(splitChar)
+    // If we want to do special formatting based on the position of the punctuation--for example, changing the last sequence separator to " and ". `position`, when set, is `&` or `,&`. Do this after we've already split `option` since `option` in this case will be `,` rather than contain `&`.
+    if (typeof position === 'string' && typeof options[position] === 'string') {
+      splitChar = position
+    }
+    const postChars = post
+    // Start by matching the full string. Progressively remove ending possibilities and then beginning possibilities. For `bc-bc`, it tries to find options in the following order, knowing that the last one, the `splitChar` on its own, will always match: `bc-bc`, `bc-b`, `c-bc`, `c-b`, `-bc`, `-b`, `-`.
+    for (let i = 0, length = pre.length; i <= length; i++) {
+      post = postChars
+      // We could make this `>=`, but Flow is happier if we have an explicit return at the end of the function.
+      while (post.length > 0) {
+        if (typeof options[`${pre}${splitChar}${post}`] === 'string') {
+          return `${pre}${splitChar}${post}`
+        }
+        // Remove the last character so that we match characters closer to `splitChar` (in `-bcv`, the `v` is the least-important part).
+        post = post.substr(0, post.length - 1)
+      }
+      // If there's no match, remove the first character and try again.
+      pre = pre.substr(1)
+    }
+    // Most of the time, we'll probably end up here.
+    return splitChar
+  }
+
+  // Some values can have variables indicated by a `$`. Replace them if we can.
+  function formatVariable(optionsKey, part, token) {
+    let pattern = options[optionsKey]
+    // We can short-circuit the rest of this logic if there are no `$`.
+    if (pattern.indexOf('$') === -1) {
+      return pattern
+    }
+    // Replace `$chapters` with a literal value like `ch.` or `chs.` It's a RegExp rather than a string to allow the `/g` flag.
+    pattern = pattern.replace(/\$chapters/g, function () {
+      // If `books` defines a string to use (e.g., with `Ps.$chapters`, maybe you want "Ps. 3" rather than "ch. 3"), use that instead.
+      const arrayToUse = typeof books[`${part.b}.$chapters`] === 'undefined' ? options.$chapters : books[`${part.b}.$chapters`]
+      // Only retun the plural if there's a plural variant to use and there are later chapters.
+      if (arrayToUse.length > 1 && multipleChaptersPosition(part, token) > 0) {
+        // All we care about is whether it's singular or plural, not whether it's a book on its own (which would be a weird place to use `$chapters`).
+        return arrayToUse[1]
+      }
+      return arrayToUse[0]
+    })
+    // It's a RegExp rather than a string to allow the `/g` flag.
+    pattern = pattern.replace(/\$verses/g, function () {
+      // Unlike `$chapters`, `$verses` doesn't require a check inside `books` since they're going to be in the same chapter: `Ps.1.2-Ps.1.3` is going to be `vv. 2-3`.
+      if (options.$verses.length > 1 && hasMultipleVerses(part, token) === true) {
+        return options.$verses[1]
+      }
+      return options.$verses[0]
+    })
+    pattern = pattern.replace(/\$b/g, function () {
+      // We know that `part.b` exists in `books` because it would have already thrown an exception in `osisWithContext` or `setContext`.
+      const maxPosition = books[part.b].length - 1
+      // If there's only one possible book name, use that.
+      if (maxPosition === 0) {
+        return books[part.b][0]
+      }
+      // Otherwise, calculate the one that we prefer to use. [0] = singular; [1] = plural; [2] = book on its own.
+      const preferredPosition = multipleChaptersPosition(part, token)
+      if (preferredPosition > maxPosition) {
+        return books[part.b][maxPosition]
+      }
+      return books[part.b][preferredPosition]
+    })
+    // Don't accidentally insert `undefined` into a string.
+    pattern = pattern.replace(/\$c/g, typeof part.c === 'string' ? part.c : '')
+    pattern = pattern.replace(/\$v/g, typeof part.v === 'string' ? part.v : '')
+    return pattern
+  }
+
+  // If a range or sequence has multiple chapters, we may want to change the output: `chapters 1-2` rather than `chapter 1-2`, for example. The return value is 0-2, indicating which `books[osis][]` is preferred.
+  function multipleChaptersPosition(part, token) {
+    // If we're looking at a whole book and there are multiple chapters in the book, we know there are multiple chapters.
+    if (token.type === 'b' && !isSingleChapterBook(part.b)) {
+      // It's a book on its own, so prefer the full-book abbreviation if available.
+      return 2
+    }
+    // If we're currently looking at a chapter, include it in our calculations.
+    let later = part.type === 'c' ? 'c' : ''
+    // All the part types until the next book.
+    later += part.laters.join('') + ',' + token.laters.join(',')
+    // A chapter range always has multiple chapters.
+    if (later.indexOf('-c') >= 0) {
+      return 1
+    }
+    // An unusual situation, a Psalms range into another book (e.g., `Ps.149-Prov.1` or `Ps.150-Prov.1`). In the first case, we want to use the plural; in the second, we want to use the singular. `later` only has a `-b` if it's in the current `part`--`token.laters` ends before it reaches the next book in a sequence.
+    if (part.b === 'Ps' && later.indexOf('-b') >= 0) {
+      // Find the chapter number.
+      for (let i = 0, max = token.parts.length; i < max; i++) {
+        const otherPart = token.parts[i]
+        if (otherPart.type === 'c') {
+          // If it's less than the number of Psalms, we know that more than one chapter is involved.
+          if (parseInt(otherPart.c, 10) < options.maxPs) {
+            return 1
+          }
+          // Once we've looked at the chapter, we don't need to look any further. We know this situation doesn't apply.
+          break
+        }
+      }
+      return 0
+    }
+    // If there are two or more chapter instances in a sequence, we know there are multiple chapters. "cc" = "", "", "".
+    if (later.split('c').length > 2) {
+      return 1
+    }
+    return 0
+  }
+
+  // Possibly handle `verse 1` and `verses 1-2` differently.
+  function hasMultipleVerses(part, token) {
+    // If we're currently looking at a verse, include it in our calculations.
+    let later = part.type === 'v' ? 'v' : ''
+    later += part.laters.join('') + ',' + token.laters.join(',')
+    // We only care about the current chapter.
+    const [thisChapter] = later.split('c')
+    // If there's a range, we know there are multiple verses.
+    if (thisChapter.indexOf('-') >= 0) {
+      return true
+    }
+    // "vv" = "", "", "".
+    if (thisChapter.split('v').length > 2) {
+      return true
+    }
+    return false
+  }
+
+  // Add data we'll use later to construct the final output.
+  function annotateTokens(tokens) {
+    const out = []
+    // We only need `prevToken` in a sequence, which is never first, so it's OK that this value is wrong on the first loop run.
+    let prevToken = tokens[0]
+    // `annotateTokenLaters()` can change the length of `tokens` if there's a `bookSequence`.
+    while (tokens.length > 0) {
+      const token = tokens.shift()
+      // Never first.
+      if (token.type === ',') {
+        annotateSequenceToken(token, prevToken, tokens)
+      } else if (out.length === 0) {
+        annotateFirstToken(token)
+      }
+      // Add future context.
+      annotateTokenLaters(token, tokens)
+      annotateTokenParts(token.parts)
+      // Add a `position` property to the last `sequence` token.
+      if (tokens.length === 0 && out.length > 1) {
+        // If there are only two items, we know that there will be three items total: a reference token, a sequence token, and a yet-to-be-added reference token. At the moment, the sequence token is the last item in `out`.
+        out[out.length - 1].position = out.length === 2 ? '&' : ',&'
+      }
+      out.push(token)
+      prevToken = token
+    }
+    return out
+  }
+
+  // Add data to the first token if there's a start context.
+  function annotateFirstToken(token) {
+    // The first `part.type` could be `c` or `v` if `format()` is provided a start context.
+    if (token.parts[0].type === 'b') {
+      return
+    }
+    // `c` or `v` or `cv`. We don't care about anything after the range.
+    const [pre] = token.type.split('-')
+    let prefix = ''
+    // Note that we're dealing with a single-chapter book in case we want to handle it differently.
+    if (isSingleChapterBook(token.parts[0].b)) {
+      prefix = 'b1'
+    }
+    // Set the `subType` (`c` and `v` don't normally have a `subType`) for later use.
+    token.parts[0].subType = `${prefix}^${pre}`
+  }
+
+  // Create a sequence `token.parts` with the keys we'll need later.
+  function annotateSequenceToken(token, prevToken, tokens) {
+    // If there's a bookSequence, use the context from the last actual token even though we've moved the token to a `subTokens` array.
+    if (typeof prevToken.subTokens !== 'undefined') {
+      prevToken = prevToken.subTokens[prevToken.subTokens.length - 1]
+    }
+    const prevPart = prevToken.parts[prevToken.parts.length - 1]
+    // If preceded or followed by a range, only use the parts closest to the sequence token: `bcv-cv,bc-v` returns the subType `cv,bc`. We only care about whatever immediately precedes and follows the sequence token since those are what will affect how we format it.
+    const prevTypes = prevToken.type.split('-')
+    const nextTypes = tokens[0].type.split('-')
+    token.parts = [
+      {
+        type: ',',
+        // Indicates the preceding and following token types so that we can join different types differently if we want.
+        subType: `${prevTypes.pop()},${nextTypes[0]}`,
+        b: prevPart.b,
+        c: prevPart.c,
+        v: prevPart.v,
+        laters: [],
+      },
+    ]
+  }
+
+  // Fill in the `laters` array for each token.
+  function annotateTokenLaters(token, tokens) {
+    const currentType = token.type
+    // An array of later sequential books, in case we want to format the sequence specially (e.g., `1John-2John` might become `1 -2 John`).
+    const bookSequence = []
+    // If we have a `b` sequence, we want to continue past when we would normally stop.
+    let keepCheckingBooks = false
+    // But we still want to stop adding `token.laters` if we do encounter a `b`.
+    let latersDone = false
+    if (currentType === 'b') {
+      bookSequence.push(token.parts[0].b)
+      keepCheckingBooks = true
+    }
+
+    for (let i = 0, max = tokens.length; i < max; i++) {
+      const laterToken = tokens[i]
+      const laterType = laterToken.type
+      // Doing it this way avoids possible leading and trailing `,`.
+      if (laterType === ',') {
+        continue
+      }
+      // If we're still in a `b` sequence, keep going.
+      if (keepCheckingBooks === true) {
+        if (laterType === 'b') {
+          bookSequence.push(laterToken.parts[0].b)
+        } else {
+          keepCheckingBooks = false
+        }
+      }
+      // Stop here if we've already encountered a book and don't need to go further.
+      if (latersDone === true) {
+        continue
+      }
+      // Only go as far as the next book.
+      if (laterType.indexOf('b') >= 0) {
+        const [pre] = laterType.split('b')
+        // Only add it to the array if there's something to add. We don't care about empty strings.
+        if (pre.length > 0) {
+          token.laters.push(pre)
+        }
+        if (keepCheckingBooks === false) {
+          break
+        }
+        latersDone = true
+        // If there's not a book in `laterType`, then we know we need to keep looking until we find one or reach the end of the array.
+      } else {
+        token.laters.push(laterType)
+      }
+    }
+    // There was a sequence of only `b` tokens. Check to see whether we want to use a special string to handle them. It modifies `tokens` in-place if so.
+    if (bookSequence.length > 1) {
+      addBookSequence(token, bookSequence, tokens)
+    }
+  }
+
+  // If given a sequence like `1John,2John`, we may want to turn that into `1 and 2 John`.
+  function addBookSequence(token, sequenceArray, tokens) {
+    // `sequenceArray` includes the current token. If `length === 1`, then the only item left in the array is the current token, which by definition isn't part of a sequence.
+    while (sequenceArray.length > 1) {
+      // Look for a comma-joined sequence in `books`.
+      const bookSequence = sequenceArray.join(',')
+      if (typeof books[bookSequence] !== 'undefined' && typeof books[bookSequence][0] === 'string') {
+        token.bookSequence = bookSequence
+        // Remove the number of items in the sequence. Let's say there are three items: `["1John", "2John", "3John"]`. `1John` is the current token, which is already gone from `tokens`. That means we need to hop ahead two books, or `3 - 1`, to prevent us from processing the tokens. The `* 2` removes sequence tokens (`,`) as well as book tokens--`tokens[0]` is a sequence, followed by a book, then sequence, then book, etc.
+        token.subTokens = tokens.splice(0, (sequenceArray.length - 1) * 2)
+        // Once we've found a match and have cleaned up later tokens, we're done.
+        return
+      }
+      sequenceArray.pop()
+    }
+    // Most of the time, don't make any changes to `token` or `tokens`.
+  }
+
+  // Add `laters` to each `token.parts`.
+  function annotateTokenParts(parts) {
+    const laters = []
+    const max = parts.length
+    // First we need to know what all the `laters` are.
+    for (let i = 0; i < max; i++) {
+      laters.push(parts[i].type)
+    }
+    // Then we can add them to each `part`.
+    for (let i = 0; i < max; i++) {
+      // The first element is the current type.
+      laters.shift()
+      // Create a copy rather than a reference and remove spacing parts (`.`). We want to keep `-` tokens, however, since we may need them later.
+      parts[i].laters = laters.filter(function (value) {
+        return value !== '.'
+      })
+    }
+  }
+
+  // Convert an OSIS string to a single token.
+  function osisToToken(osis, context) {
+    // `end` may be undefined.
+    const [start, end] = osis.split('-')
+    const startToken = osisWithContext(start, context)
+    // If there's  no `end`, we don't need to do any further processing. `startToken` is itself a complete token.
+    if (end === undefined) {
+      return startToken
+    }
+    const endToken = osisWithContext(end, context)
+    // Construct a unified set of `parts` for the output token, including the range.
+    const parts = startToken.parts
+    parts.push(makeRangePart(startToken, endToken))
+
+    const token = {
+      osis,
+      type: `${startToken.type}-${endToken.type}`,
+      // Add the end `parts` to the existing `parts` array.
+      parts: parts.concat(endToken.parts),
+      laters: [],
+    }
+    // We may want to handle certain book-only ranges differently (`1John-2John` might be `1-2 John`).
+    if (token.type === 'b-b') {
+      token.bookRange = startToken.parts[0].b + '-' + endToken.parts[0].b
+    }
+    return token
+  }
+
+  // Construct a range token with data from one preceding and following token.
+  function makeRangePart(startToken, endToken) {
+    const prevPart = startToken.parts[startToken.parts.length - 1]
+    const range = {
+      type: '-',
+      // To format it later, we may need to know what kind of objects it's joining.
+      subType: `${startToken.type}-${endToken.type}`,
+      b: prevPart.b,
+      laters: [],
+    }
+    // Only add chapter and verse values if they exist in the previous part. These values reflect the current context, not the future context.
+    if (typeof prevPart.c !== 'undefined') {
+      range.c = prevPart.c
+    }
+    if (typeof prevPart.v !== 'undefined') {
+      range.v = prevPart.v
+    }
+    return range
+  }
+
+  // Tokenize a non-range OSIS string, taking context into account. The goal is to omit needless parts: if the context is `Matt.1` and the current OSIS is `Matt.2`, we can omit the book from the return token.
+  function osisWithContext(osis, context) {
+    // `c` and `v` may be undefined. `c` is always defined if `v` is.
+    const [b, c, v] = osis.split('.')
+    // Don't try to guess if we encounter an unexpected book.
+    if (typeof books[b] === 'undefined') {
+      throw `Unknown OSIS book: "${b}" (${osis})`
+    }
+    const token = {
+      osis,
+      type: '',
+      parts: [],
+      laters: [],
+    }
+    const isSingleChapter = isSingleChapterBook(b)
+    // If there's an end verse, if we've set the relevant option, and if the book only has one chapter, then we want to omit the chapter: `Phlm.1.1` = `Philemon 1`.
+    const omitChapter =
+      isSingleChapter && typeof v === 'string' && (options.singleChapterFormat === 'bv' || options.singleChapterFormat === 'b')
+    // Add a `b` part if needed. It returns true if there's a chapter and modifies `token` in-place.
+    if (osisBookWithContext(b, c, v, isSingleChapter, omitChapter, context, token) === false) {
+      return token
+    }
+    // Add a `c` part if needed. It returns true if there's a verse and modifies `token` in-place.
+    if (osisChapterWithContext(b, c, v, omitChapter, context, token) === false) {
+      return token
+    }
+    // We know there's a verse because `osisBookWithContext()` and osisChapterWithContext()` have both returned `true`. `token.type` doesn't necessarily have a `b` or `c` in it already, and `token.parts` may still be empty, depending on context.
+    token.type += 'v'
+    token.parts.push({
+      type: 'v',
+      subType: '',
+      b,
+      c,
+      v,
+      laters: [],
+    })
+    context.v = parseInt(v, 10)
+    return token
+  }
+
+  // Handle a "book" part.
+  function osisBookWithContext(b, c, v, isSingleChapter, omitChapter, context, token) {
+    // If we're looking at something like `Phlm-Phlm.1`, we may want to treat `Phlm.1` as a book rather than include a chapter. This is unusual.
+    const returnSingleBook = v === undefined && isSingleChapter === true && options.singleChapterFormat === 'b'
+
+    // Gen.1,Exod = "Exod" || Gen.1,Gen = "Gen".
+    if (b !== context.b || c === undefined || returnSingleBook) {
+      // Do it this way rather than `context = {...}` to keep the reference to the original object.
+      ;(context.b = b), (context.c = 0), (context.v = 0)
+      token.parts.push({
+        type: 'b',
+        subType: '',
+        b,
+        laters: [],
+      })
+      token.type = 'b'
+      // There's no chapter, or there's no verse and we only want the whole book, so we don't need to create a `.` joiner.
+      if (c === undefined || returnSingleBook) {
+        return false
+      }
+      // In general, the `subType` will be `b.c`.
+      let subType = 'b.c'
+      // If we want to omit the chapter reference in a single-chapter book.
+      if (omitChapter === true) {
+        subType = 'b.v'
+        // It's a single-chapter book but we do want to show the chapter: `"singleChapterFormat": "bcv"` or `"bv"` without a verse (`Phlm.1`).
+      } else if (isSingleChapter === true) {
+        // `b1` means a single-chapter book.
+        subType = 'b1.c'
+      }
+      // We know there's a chapter, so insert the joiner.
+      token.parts.push({
+        type: '.',
+        subType,
+        b,
+        laters: [],
+      })
+    }
+    // At this point, we know that it's the same book as in `context` and there's a chapter.
+    return true
+  }
+
+  // Handle a "chapter" part.
+  function osisChapterWithContext(b, c, v, omitChapter, context, token) {
+    // We already know that the context book and current book are the same, either because that was the value in `context` or because we reset `context` in `osisBookWithContext()`.
+    if (parseInt(c, 10) !== context.c || v === undefined) {
+      // We need to set `context.v` because we don't know that `osisBookWithContext()` reset it.
+      ;(context.c = parseInt(c, 10)), (context.v = 0)
+      // If only `Phlm.1`, we want to include the chapter if `options.singleChapterFormat === "bv"` or `"bcv"`, but omit the chapter if it's `=== "b"`. `omitChapter` is always `false` when `v === undefined`. We only want to set the context in this final case, which we just did.
+      if (omitChapter === true) {
+        return true
+      }
+      // Otherwise, add the chapter part.
+      token.parts.push({
+        type: 'c',
+        subType: '',
+        b,
+        c,
+        laters: [],
+      })
+      token.type += 'c'
+      // There's no verse, so we don't need to insert the `.` joiner.
+      if (v === undefined) {
+        return false
+      }
+      // We know there's a verse, so insert the joiner.
+      token.parts.push({
+        type: '.',
+        subType: 'c.v',
+        b,
+        laters: [],
+      })
+    }
+    // At this point, we know that it's the same book and chapter as in `context` and that there's a verse.
+    return true
+  }
+
+  // Only checks if the book is in the `options.singleChapterBooks` array.
+  function isSingleChapterBook(b) {
+    return options.singleChapterBooks.indexOf(b) >= 0
+  }
+
+  // Confirm that the string matches the expected format of an OSIS string. Throw an exception if not. Also handle Ps151 quirks.
+  function normalizeOsis(osis) {
+    if (osisFormat.test(osis) === false) {
+      throw `Invalid osis format: '${osis}'`
+    }
+    // If we want to treat Ps151 as just another Psalm (so `Ps151.1.2` might output `Psalm 151:2`). For human-readable output, this is probably what we want.
+    if (options.Ps151Format === 'bc') {
+      // Remove the chapter and treat it as `Ps.151`.
+      osis = osis.replace(/(?:Ps151|AddPs)(?:\.\d+\b)?/g, 'Ps.151')
+    }
+    return osis
+  }
+
+  // Given an optional string context, create a `context` obect.
+  function setContext(osis) {
+    // We always only want these three keys. Flow doesn't like calling `Object.seal`, however.
+    const context = {
+      b: '',
+      c: 0,
+      v: 0,
+    }
+    // There's no provided context.
+    if (osis == null) {
+      return context
+    }
+    // Don't allow sequences.
+    osis = normalizeOsis(osis)
+    // Use the end value of the range if there is one.
+    if (osis.indexOf('-') >= 0) {
+      const [, end] = osis.split('-')
+      return setContext(end)
+    }
+    const [b, c, v] = osis.split('.')
+    if (typeof books[b] === 'undefined') {
+      throw `Unknown OSIS book provided for "context": "${b}" (${osis})"`
+    }
+    // `b` is always defined.
+    context.b = b
+    // `c` and `v` aren't necessarily defined. `v` is only defined if `c` is.
+    if (typeof c === 'string') {
+      context.c = parseInt(c, 10)
+      if (typeof v === 'string') {
+        context.v = parseInt(v, 10)
+      }
+    }
+    return context
+  }
+
+  // Override any default parameters with user-supplied parameters. Also make sure `userOptions` has all the keys we need. Each call is independent, which means it has no memory between calls; `userOptions` should contain all the keys to override defaults.
+  function setOptions(userOptions) {
+    // Reset the "global" `options` to the default.
+    options = getDefaults()
+    // No need to match properties if there's no argument.
+    if (userOptions == null) {
+      return
+    }
+    // We want to ensure type consistency, so we don't just use `Object.assign`. Flow complains if we just iterate over `Object.keys()`. This loop is where we lose our 100% Flow coverage.
+    const userKeys = Object.keys(userOptions)
+    for (let i = 0, max = userKeys.length; i < max; i++) {
+      const key = userKeys[i]
+      const defaultType = typeof options[key]
+      // If it's not in `defaults`, or if its type matches, set it.
+      if (defaultType === 'undefined' || typeof userOptions[key] === defaultType) {
+        options[key] = userOptions[key]
+        // Otherwise, the types don't match.
+      } else {
+        throw `Invalid type for options["${key}"]. It should be "${defaultType}".`
+      }
+    }
+  }
+
+  // Set valid books and abbreviations. It takes an object where each key is the OSIS book (e.g., `Matt`), and each value is a one-, two-, or three-item array. The first item is the book name to use, the second item is the book name to use for plural cases, and the third item is to use when the book appears on its own. For example: `{"Ps": ["Psalm", "Psalms"]}`. You can also use a special key of the type `OSIS.$chapters` (e.g., `Ps.$chapters`), which overrides any chapter abbreviations. For example, `{"Ps.$chapters": ["Ps.", "Pss."]` could result in `Psalms 1:2, Pss. 3, 4` if given the OSIS `Ps.1.2,Ps.3,Ps.4`.
+  function setBooks(userBooks) {
+    // The "global" `books` object.
+    books = {}
+    Object.keys(userBooks).forEach(function (key) {
+      const value = userBooks[key]
+      // Make sure it's an array...
+      if (Array.isArray(value) === false) {
+        throw `books["${key}"] should be an array: ${Object.prototype.toString.call(value)}.`
+      }
+      // And that it's the proper length.
+      if (value.length < 1 || value.length > 3) {
+        throw `books["${key}"] should have exactly 1, 2, or 3 items. `
+      }
+      books[key] = value
+    })
+  }
+
+  return {
+    format,
+    tokenize,
+    setOptions,
+    setBooks,
+  }
+}
+
+/* global module */
+module.exports = OsisFormatter

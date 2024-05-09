@@ -1,0 +1,49 @@
+{
+  "application": {
+    "name": "Carry Dev",
+    "variant": "carry",
+    "env": "dev",
+    "bundleId": {
+      "ios": "",
+      "android": ""
+    },
+    "contactUrl": ""
+  },
+  "segment": {
+    "key": ""
+  },
+  "streamIO": {
+    "key": "",
+    "server": ""
+  },
+  "codepush": {
+    "android": "",
+    "ios": ""
+  },
+  "branchIO": {
+    "domains": ["", ""],
+    "uriScheme": "",
+    "testMode": true,
+    "key": {
+      "live": "",
+      "test": ""
+    }
+  },
+  "facebook": {
+    "displayName": "",
+    "appId": "",
+    "client_token": {
+      "android": "",
+      "ios": ""
+    },
+    "loginProtocolScheme": ""
+  },
+  "bibleApi": {
+    "server": "",
+    "fumsServer": "",
+    "key": ""
+  },
+  "stripe": {
+    "merchant": ""
+  }
+}

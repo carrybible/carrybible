@@ -1,0 +1,45 @@
+{
+  "mailchimp": {
+    "key": ""
+  },
+  "stream": {
+    "server": "",
+    "key": "",
+    "secret": ""
+  },
+  "glide": {
+    "apikey": ""
+  },
+  "branch": {
+    "carry": "",
+    "apikey": ""
+  },
+  "stripe": {
+    "secret_key": "",
+    "price": ""
+  },
+  "apple": {
+    "hook": ""
+  },
+  "checkout": {
+    "host": ""
+  },
+  "mixpanel": {
+    "projectid": "",
+    "secret": "",
+    "token": ""
+  },
+  "youtube": {
+    "apikey": ""
+  },
+  "mailchimp_marketing": {
+    "apikey": ""
+  },
+  "openai": {
+    "apikey": ""
+  },
+  "algolia": {
+    "app": "",
+    "key": ""
+  }
+}
